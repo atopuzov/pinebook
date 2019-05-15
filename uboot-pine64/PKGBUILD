@@ -1,25 +1,27 @@
 # U-Boot: Pine64
 # Maintainer: Kevin Mihelich <kevin@archlinuxarm.org>
+#             Aleksandar Topuzovic <aleksandar.topuzovic@gmail.com>
 
 buildarch=8
 
-pkgname=uboot-pine64
+pkgbase=uboot-pine64
+pkgname=('uboot-pinebook' 'uboot-sopine' 'uboot-pine64-plus')
 pkgver=2019.04
 pkgrel=1
 pkgdesc="U-Boot for Pine64"
 uboot_ver=2019.04
 arm_tf_ver=2.1
 arch=('aarch64')
+install=${pkgbase}.install
 url='http://www.denx.de/wiki/U-Boot/WebHome'
 license=('GPL')
 makedepends=('bc' 'git' 'python' 'swig' 'dtc')
-install=${pkgname}.install
 uboot_dir=u-boot-${uboot_ver}
 arm_tf_dir=arm-trusted-firmware-${arm_tf_ver}
 
 source=("https://github.com/u-boot/u-boot/archive/v${uboot_ver}.tar.gz"
         "https://github.com/ARM-software/arm-trusted-firmware/archive/v${arm_tf_ver}.tar.gz"
-	'0001-ATF-set-fno-stack-protector.patch'
+	      '0001-ATF-set-fno-stack-protector.patch'
         'boot.txt'
         'mkscr')
 md5sums=('8533e568393c2738421acd802a73a295'
@@ -46,28 +48,45 @@ build() {
   cd ../${uboot_dir}
 
   make distclean
-  make pine64_plus_defconfig
-  echo 'CONFIG_IDENT_STRING=" Arch Linux ARM"' >> .config
-  make EXTRAVERSION=-${pkgrel}
-  cat spl/sunxi-spl.bin u-boot.itb > u-boot-sunxi-with-spl-pine64.bin
-
-  make sopine_baseboard_defconfig
-  echo 'CONFIG_IDENT_STRING=" Arch Linux ARM"' >> .config
-  make EXTRAVERSION=-${pkgrel}
-  cat spl/sunxi-spl.bin u-boot.itb > u-boot-sunxi-with-spl-sopine.bin
-
-  make pinebook_defconfig
-  echo 'CONFIG_IDENT_STRING=" Arch Linux ARM"' >> .config
-  make EXTRAVERSION=-${pkgrel}
-  cat spl/sunxi-spl.bin u-boot.itb > u-boot-sunxi-with-spl-pinebook.bin
+  for i in pine64_plus sopine_baseboard pinebook; do
+    msg ${i}
+    make ${i}_defconfig
+    echo 'CONFIG_IDENT_STRING=" Arch Linux ARM"' >> .config
+    make EXTRAVERSION=-${pkgrel}
+    mkdir ${i}
+    cat spl/sunxi-spl.bin u-boot.itb > ${i}/u-boot-sunxi-with-spl.bin
+  done
 }
 
-package() {
+common_package() {
+  name=$1
+
   cd ${uboot_dir}
 
-  mkdir -p "${pkgdir}"/boot
+  install -d "${pkgdir}"/boot
+  install -Dm644 ../boot.txt "${pkgdir}"/boot/boot.txt
+  install -Dm755 ../mkscr "${pkgdir}"/boot/mkscr
+  install -Dm644 ${name}/u-boot-sunxi-with-spl.bin "${pkgdir}"/boot
 
-  cp u-boot-sunxi-with-spl-{pine64,sopine,pinebook}.bin "${pkgdir}"/boot
-  cp ../boot.txt ../mkscr "${pkgdir}"/boot
   tools/mkimage -A arm -O linux -T script -C none -n "U-Boot boot script" -d "${pkgdir}"/boot/boot.txt "${pkgdir}"/boot/boot.scr
+}
+
+package_uboot-pine64-plus() {
+  pkgdesc="U-Boot for Pine64+"
+  # install=${pkgbase}.install
+
+  common_package "pine64_plus"
+}
+
+package_uboot-sopine() {
+  pkgdesc="U-Boot for Sopine"
+  # install=${pkgbase}.install
+
+  common_package "sopine_baseboard"
+}
+package_uboot-pinebook() {
+  pkgdesc="U-Boot for Pinebook"
+  # install=${pkgbase}.install
+
+  common_package "pinebook"
 }

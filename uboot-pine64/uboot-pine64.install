@@ -1,10 +1,18 @@
 flash_uboot() {
-  echo "Install new bootloader by running:"
-  echo "# dd if=/boot/u-boot-sunxi-with-spl-pine64.bin of=/dev/mmcblk0 bs=8k seek=1 for Pine64 SD"
-  echo "# dd if=/boot/u-boot-sunxi-with-spl-sopine.bin of=/dev/mmcblk0 bs=8k seek=1 for SoPine SD"
-  echo "# dd if=/boot/u-boot-sunxi-with-spl-sopine.bin of=/dev/mmcblk2 bs=8k seek=1 for SoPine eMMC"
-  echo "# dd if=/boot/u-boot-sunxi-with-spl-pinebook.bin of=/dev/mmcblk0 bs=8k seek=1 for Pinebook SD"
-  echo "# dd if=/boot/u-boot-sunxi-with-spl-pinebook.bin of=/dev/mmcblk2 bs=8k seek=1 for Pinebook eMMC"
+  major=$(mountpoint -d / | cut -f 1 -d ':')
+  minor=0
+  device=$(cat /proc/partitions | awk {'if ($1 == "'${major}'" && $2 == "'${minor}'") print $4 '})
+
+  echo "A new U-Boot version needs to be flashed onto ${device}."
+  echo "Do you want to do this now? [y|N]"
+  read -r shouldwe
+  if [[ $shouldwe =~ ^([yY][eE][sS]|[yY])$ ]]; then
+    dd if=/boot/u-boot-sunxi-with-spl.bin of=${device} bs=8k seek=1
+    sync
+  else
+    echo "You can do this later by running:"
+    echo "# dd if=/boot/u-boot-sunxi-with-spl.bin of=${device} bs=8k seek=1"
+  fi
 }
 
 ## arg 1:  the new package version
